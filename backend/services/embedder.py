@@ -1,6 +1,6 @@
 # backend/services/embedder.py
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
 import os
 
 CHROMA_PATH = "chroma_db"
