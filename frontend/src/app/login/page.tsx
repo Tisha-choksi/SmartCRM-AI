@@ -23,15 +23,36 @@ export default function LoginPage() {
 
   return (
     <div style={{maxWidth:360,margin:'80px auto',padding:'0 1rem'}}>
-      <h1 style={{fontSize:22,fontWeight:500,marginBottom:8}}>SmartCRM AI</h1>
-      <input type="email" placeholder="Email" value={email}
-        onChange={e => setEmail(e.target.value)} style={{width:'100%',marginBottom:10}}/>
-      <input type="password" placeholder="Password" value={password}
-        onChange={e => setPassword(e.target.value)} style={{width:'100%',marginBottom:16}}/>
-      <button onClick={handleSubmit} style={{width:'100%',padding:'10px 0'}}>
-        {mode === 'login' ? 'Sign in' : 'Create account'}
+      <h1 style={{fontSize:22,fontWeight:500,marginBottom:4}}>SmartCRM AI</h1>
+      <p style={{fontSize:13,color:'#888',marginBottom:24}}>
+        {mode==='login' ? 'Sign in to your account' : 'Create a free account'}
+      </p>
+      <input
+        type="email" placeholder="Email" value={email}
+        onChange={e => setEmail(e.target.value)}
+        style={{width:'100%',marginBottom:10,padding:'8px 12px',border:'0.5px solid #ccc',borderRadius:8,fontSize:14}}
+      />
+      <input
+        type="password" placeholder="Password" value={password}
+        onChange={e => setPassword(e.target.value)}
+        style={{width:'100%',marginBottom:16,padding:'8px 12px',border:'0.5px solid #ccc',borderRadius:8,fontSize:14}}
+      />
+      <button
+        onClick={handleSubmit}
+        style={{width:'100%',padding:'10px 0',background:'#000',color:'#fff',border:'none',borderRadius:8,fontSize:14,cursor:'pointer'}}
+      >
+        {mode==='login' ? 'Sign in' : 'Create account'}
       </button>
-      {msg && <p style={{marginTop:12,fontSize:13}}>{msg}</p>}
+      {msg && <p style={{marginTop:12,fontSize:13,color:'#185fa5'}}>{msg}</p>}
+      <p style={{marginTop:16,fontSize:13,textAlign:'center',color:'#888'}}>
+        {mode==='login' ? "No account? " : "Have an account? "}
+        <span
+          style={{cursor:'pointer',color:'#185fa5',textDecoration:'underline'}}
+          onClick={() => { setMode(mode==='login'?'signup':'login'); setMsg('') }}
+        >
+          {mode==='login' ? 'Sign up' : 'Sign in'}
+        </span>
+      </p>
     </div>
   )
 }
