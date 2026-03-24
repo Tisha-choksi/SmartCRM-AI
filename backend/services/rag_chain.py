@@ -1,6 +1,6 @@
 # backend/services/rag_chain.py
 from langchain_groq import ChatGroq
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from services.embedder import search_documents
 import os
 
