@@ -5,7 +5,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_client():
-    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
+    return create_client(
+        os.environ["SUPABASE_URL"],
+        os.environ["SUPABASE_SERVICE_KEY"]
+    )
 
 # backend/routers/contacts.py
 from fastapi import APIRouter, HTTPException
