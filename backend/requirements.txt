@@ -3,3 +3,10 @@ uvicorn
 supabase
 python-dotenv
 pydantic
+langchain
+langchain-community
+langchain-groq
+chromadb
+sentence-transformers
+pymupdf
+python-multipart
