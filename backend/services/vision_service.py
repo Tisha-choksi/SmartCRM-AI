@@ -1,11 +1,13 @@
 # backend/services/vision_service.py
-from google import genai
+import google.generativeai as genai
 import os, json, base64
 from dotenv import load_dotenv
 load_dotenv()
-client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+
+genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+
 def extract_contact_from_image(image_bytes: bytes, mime_type: str) -> dict:
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-2.0-flash")
 
     prompt = """You are extracting contact information from a business card image.
 Extract the following fields and return ONLY a valid JSON object with no extra text:
