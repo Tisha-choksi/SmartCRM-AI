@@ -6,7 +6,12 @@ pydantic
 langchain
 langchain-community
 langchain-groq
+langchain-core
+langchain-chroma
+langchain-huggingface
+langchain-text-splitters
 chromadb
-sentence-transformers
+fastembed
 pymupdf
 python-multipart
+google-generativeai
