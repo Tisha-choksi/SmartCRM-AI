@@ -7,7 +7,7 @@ load_dotenv()
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
 def extract_contact_from_image(image_bytes: bytes, mime_type: str) -> dict:
-    model = genai.GenerativeModel("gemini-2.0-flash")
+    model = genai.GenerativeModel("gemini-1.5-flash-8b")
 
     prompt = """You are extracting contact information from a business card image.
 Extract the following fields and return ONLY a valid JSON object with no extra text:
