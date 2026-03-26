@@ -15,3 +15,5 @@ fastembed
 pymupdf
 python-multipart
 google-generativeai
+langgraph
+tavily-python

@@ -7,6 +7,7 @@ const links = [
   { href: '/dashboard',          label: 'Dashboard' },
   { href: '/dashboard/contacts', label: 'Contacts'  },
   { href: '/dashboard/deals',    label: 'Deals'     },
+  { href: '/dashboard/agents',   label: 'AI Agent'  },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

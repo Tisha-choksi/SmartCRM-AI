@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from routers import contacts, deals, rag, vision
+from routers import contacts, deals, rag, vision, agent
 
 app = FastAPI(title="SmartCRM API")
 
@@ -23,6 +23,7 @@ app.include_router(contacts.router, prefix="/contacts", tags=["contacts"])
 app.include_router(deals.router,    prefix="/deals",    tags=["deals"])
 app.include_router(rag.router,      prefix="/rag",      tags=["rag"])
 app.include_router(vision.router,   prefix="/vision",   tags=["vision"])
+app.include_router(agent.router,    prefix="/agent",    tags=["agent"])
 
 @app.get("/health")
 def health():
