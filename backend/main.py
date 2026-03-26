@@ -5,10 +5,17 @@ from routers import contacts, deals, rag, vision
 
 app = FastAPI(title="SmartCRM API")
 
+# app.add_middleware(CORSMiddleware,
+#   allow_origins=["http://localhost:3000",
+#                  "https://smartcrmai.vercel.app"],
+#   allow_credentials=True,
+#   allow_methods=["*"],
+#   allow_headers=["*"]
+# )
+
 app.add_middleware(CORSMiddleware,
-  allow_origins=["http://localhost:3000",
-                 "https://smartcrmai.vercel.app"],
-  allow_credentials=True,
+  allow_origins=["*"],
+  allow_credentials=False,
   allow_methods=["*"],
   allow_headers=["*"]
 )

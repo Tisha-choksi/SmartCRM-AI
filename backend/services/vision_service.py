@@ -1,11 +1,9 @@
 # backend/services/vision_service.py
-import google.generativeai as genai
+from google import genai
 import os, json, base64
 from dotenv import load_dotenv
 load_dotenv()
-
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 def extract_contact_from_image(image_bytes: bytes, mime_type: str) -> dict:
     model = genai.GenerativeModel("gemini-1.5-flash")
 
