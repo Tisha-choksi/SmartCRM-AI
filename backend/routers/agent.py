@@ -67,4 +67,3 @@ def next_action(body: NextActionRequest):
         "contact_name": body.contact_name
     })
     return {"suggestion": suggestion}
-
