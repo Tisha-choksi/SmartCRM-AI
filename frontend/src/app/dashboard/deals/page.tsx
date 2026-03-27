@@ -5,21 +5,21 @@ import { supabase } from '@/lib/supabase'
 const STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won']
 
 const STAGE_COLORS: Record<string, string> = {
-  lead:        '#888',
-  qualified:   '#185fa5',
-  proposal:    '#854f0b',
+  lead: '#888',
+  qualified: '#185fa5',
+  proposal: '#854f0b',
   negotiation: '#0f6e56',
-  won:         '#27500a',
+  won: '#27500a',
 }
 
 export default function DealsPage() {
-  const [deals, setDeals]       = useState<any[]>([])
+  const [deals, setDeals] = useState<any[]>([])
   const [contacts, setContacts] = useState<any[]>([])
-  const [adding, setAdding]     = useState(false)
-  const [loading, setLoading]   = useState(true)
-  const [title, setTitle]       = useState('')
-  const [value, setValue]       = useState('')
-  const [stage, setStage]       = useState('lead')
+  const [adding, setAdding] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [title, setTitle] = useState('')
+  const [value, setValue] = useState('')
+  const [stage, setStage] = useState('lead')
   const [contactId, setContactId] = useState('')
   const [movingDeal, setMovingDeal] = useState<string | null>(null)
 
@@ -36,20 +36,28 @@ export default function DealsPage() {
 
   async function addDeal() {
     if (!title.trim()) return
-    const { data: { user } } = await supabase.auth.getUser()
-    await supabase.from('deals').insert({
-      title,
-      value:      parseFloat(value) || 0,
-      stage,
-      contact_id: contactId || null,
-      user_id:    user!.id,
-      last_touch: new Date().toISOString()
-    })
-    setAdding(false)
-    setTitle(''); setValue(''); setStage('lead'); setContactId('')
-    load()
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        alert('Not logged in. Please refresh the page.')
+        return
+      }
+      await supabase.from('deals').insert({
+        title,
+        value: parseFloat(value) || 0,
+        stage,
+        contact_id: contactId || null,
+        user_id: user.id,
+        last_touch: new Date().toISOString()
+      })
+      setAdding(false)
+      setTitle(''); setValue(''); setStage('lead'); setContactId('')
+      load()
+    } catch (err) {
+      console.error('Error adding deal:', err)
+      alert('Failed to add deal. Check console.')
+    }
   }
-
   async function moveDeal(dealId: string, newStage: string) {
     setMovingDeal(dealId)
     await supabase.from('deals')
@@ -202,7 +210,7 @@ export default function DealsPage() {
                     <div style={{
                       width: 8, height: 8, borderRadius: '50%',
                       background: STAGE_COLORS[s]
-                    }}/>
+                    }} />
                     <span style={{
                       fontSize: 12, fontWeight: 500, textTransform: 'capitalize',
                       color: '#444'
