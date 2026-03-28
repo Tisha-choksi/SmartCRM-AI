@@ -1,13 +1,11 @@
-# backend/services/embedder.py
-from langchain_huggingface import HuggingFaceEmbeddings
+# backend/services/embedder.py — Render-compatible version
+from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_chroma import Chroma
-import os
 
 CHROMA_PATH = "chroma_db"
-MODEL_NAME  = "all-MiniLM-L6-v2"
 
 def get_embeddings():
-    return HuggingFaceEmbeddings(model_name=MODEL_NAME)
+    return FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
 
 def get_vectorstore(collection_name: str):
     return Chroma(
@@ -16,7 +14,7 @@ def get_vectorstore(collection_name: str):
         persist_directory=CHROMA_PATH
     )
 
-def add_documents(collection_name: str, chunks: list[str], metadata: dict):
+def add_documents(collection_name: str, chunks: list, metadata: dict):
     store = get_vectorstore(collection_name)
     metadatas = [metadata for _ in chunks]
     store.add_texts(texts=chunks, metadatas=metadatas)
