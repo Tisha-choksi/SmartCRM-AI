@@ -8,13 +8,12 @@ langchain-community
 langchain-groq
 langchain-core
 langchain-chroma
-langchain-huggingface
 langchain-text-splitters
 chromadb
-fastembed
 pymupdf
 python-multipart
 google-generativeai
 langgraph
 tavily-python
 httpx
+sentence-transformers

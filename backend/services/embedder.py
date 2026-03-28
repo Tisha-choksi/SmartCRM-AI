@@ -1,11 +1,13 @@
-# backend/services/embedder.py — Render-compatible version
-from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+# backend/services/embedder.py
+from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_chroma import Chroma
 
 CHROMA_PATH = "chroma_db"
 
 def get_embeddings():
-    return FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+    return SentenceTransformerEmbeddings(
+        model_name="all-MiniLM-L6-v2"
+    )
 
 def get_vectorstore(collection_name: str):
     return Chroma(
