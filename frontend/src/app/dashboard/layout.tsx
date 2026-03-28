@@ -8,8 +8,8 @@ const links = [
   { href: '/dashboard/contacts', label: 'Contacts' },
   { href: '/dashboard/deals', label: 'Deals' },
   { href: '/dashboard/agents', label: 'AI Agent' },
+  { href: '/dashboard/email-studio', label: 'Email Studio' }, // ← ADD
 ]
-
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const path = usePathname()
   const router = useRouter()
