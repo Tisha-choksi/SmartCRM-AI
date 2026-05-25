@@ -1,13 +1,14 @@
 # backend/routers/finetune.py
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 import httpx, os
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
 from dotenv import load_dotenv
+from auth import get_current_user
 load_dotenv()
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 OLLAMA_URL = "http://localhost:11434"
 
 class EmailRequest(BaseModel):
