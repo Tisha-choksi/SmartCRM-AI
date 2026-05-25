@@ -6,9 +6,10 @@ from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
 from dotenv import load_dotenv
 from auth import get_current_user
+from limiter import limiter
 load_dotenv()
 
-router = APIRouter(dependencies=[Depends(get_current_user)])
+router = APIRouter(dependencies=[Depends(get_current_user), Depends(limiter.limit("10/minute"))])
 OLLAMA_URL = "http://localhost:11434"
 
 class EmailRequest(BaseModel):
