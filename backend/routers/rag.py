@@ -1,11 +1,12 @@
 # backend/routers/rag.py
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from pydantic import BaseModel
 from services.chunker import extract_text_from_pdf, extract_text_from_txt, chunk_text
 from services.embedder import add_documents
 from services.rag_chain import ask_question
+from auth import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 class QuestionRequest(BaseModel):
     question: str

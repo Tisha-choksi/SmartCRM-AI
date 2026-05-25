@@ -1,14 +1,15 @@
 # backend/routers/agent.py
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from services.agent_service import (
     run_agent, draft_followup_email,
     summarize_pipeline, suggest_next_action,
     research_company
 )
+from auth import get_current_user
 import json
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 class AgentRequest(BaseModel):
     task: str

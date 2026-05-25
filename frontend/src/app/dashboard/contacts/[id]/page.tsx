@@ -2,9 +2,8 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/api'
 import { useParams } from 'next/navigation'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export default function ContactDetailPage() {
   const { id } = useParams()
@@ -30,7 +29,7 @@ export default function ContactDetailPage() {
     const form = new FormData()
     form.append('file', file)
     try {
-      const res  = await fetch(`${API}/rag/upload/${id}`, { method: 'POST', body: form })
+      const res  = await apiFetch(`/rag/upload/${id}`, { method: 'POST', body: form })
       const data = await res.json()
       setUploadMsg(`Indexed ${data.chunks} chunks from "${data.filename}"`)
     } catch {
@@ -46,7 +45,7 @@ export default function ContactDetailPage() {
     setAsking(true)
     setMessages(m => [...m, { role: 'user', text: q }])
     try {
-      const res  = await fetch(`${API}/rag/ask`, {
+      const res  = await apiFetch('/rag/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: q, contact_id: id })
