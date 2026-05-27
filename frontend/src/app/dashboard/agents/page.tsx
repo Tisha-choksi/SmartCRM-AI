@@ -1,8 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { apiFetch } from '@/lib/api'
 
 export default function AgentsPage() {
   const [deals, setDeals] = useState<any[]>([])
@@ -40,7 +39,7 @@ export default function AgentsPage() {
     setSelectedDeal(deal)
     const contact = contacts.find(c => c.id === deal.contact_id)
     try {
-      const res = await fetch(`${API}/agent/draft-email`, {
+      const res = await apiFetch('/agent/draft-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -59,7 +58,7 @@ export default function AgentsPage() {
   async function generateDigest() {
     setLoading(true); setDigest('')
     try {
-      const res = await fetch(`${API}/agent/pipeline-digest`, {
+      const res = await apiFetch('/agent/pipeline-digest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -79,7 +78,7 @@ export default function AgentsPage() {
     if (!companyName.trim()) return
     setLoading(true); setResearchResult('')
     try {
-      const res = await fetch(`${API}/agent/research`, {
+      const res = await apiFetch('/agent/research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ company_name: companyName })

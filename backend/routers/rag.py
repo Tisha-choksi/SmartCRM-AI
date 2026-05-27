@@ -5,8 +5,9 @@ from services.chunker import extract_text_from_pdf, extract_text_from_txt, chunk
 from services.embedder import add_documents
 from services.rag_chain import ask_question
 from auth import get_current_user
+from limiter import limiter
 
-router = APIRouter(dependencies=[Depends(get_current_user)])
+router = APIRouter(dependencies=[Depends(get_current_user), Depends(limiter.limit("10/minute"))])
 
 class QuestionRequest(BaseModel):
     question: str

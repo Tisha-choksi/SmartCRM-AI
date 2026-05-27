@@ -1,7 +1,6 @@
 'use client'
 import { useState } from 'react'
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { apiFetch } from '@/lib/api'
 
 export default function EmailStudioPage() {
   const [instruction, setInstruction] = useState('')
@@ -13,7 +12,7 @@ export default function EmailStudioPage() {
 
   async function checkOllama() {
     try {
-      const res  = await fetch(`${API}/finetune/ollama-status`)
+      const res  = await apiFetch('/finetune/ollama-status')
       const data = await res.json()
       setOllamaOk(data.running)
     } catch { setOllamaOk(false) }
@@ -26,11 +25,11 @@ export default function EmailStudioPage() {
 
     // Run both in parallel
     const [baseRes, ftRes] = await Promise.allSettled([
-      fetch(`${API}/finetune/generate-base`, {
+      apiFetch('/finetune/generate-base', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({instruction})
       }).then(r=>r.json()),
-      fetch(`${API}/finetune/generate-finetuned`, {
+      apiFetch('/finetune/generate-finetuned', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({instruction})
       }).then(r=>r.json())
