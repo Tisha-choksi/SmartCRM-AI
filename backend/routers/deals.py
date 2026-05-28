@@ -12,6 +12,6 @@ def list_deals(user_id: str = Depends(get_current_user)):
 
 @router.post("/")
 def create_deal(body: DealCreate, user_id: str = Depends(get_current_user)):
-    data = body.dict()
+    data = body.model_dump()
     data["user_id"] = user_id
     return get_client().table("deals").insert(data).execute().data[0]

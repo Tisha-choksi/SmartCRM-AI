@@ -7,9 +7,10 @@ from services.agent_service import (
     research_company
 )
 from auth import get_current_user
+from limiter import limiter
 import json
 
-router = APIRouter(dependencies=[Depends(get_current_user)])
+router = APIRouter(dependencies=[Depends(get_current_user), Depends(limiter.limit("10/minute"))])
 
 class AgentRequest(BaseModel):
     task: str
