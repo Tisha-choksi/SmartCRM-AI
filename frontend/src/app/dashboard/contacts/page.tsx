@@ -1,50 +1,72 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/api'
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { toast } from 'sonner'
+import type { Contact } from '@/types'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+interface ScannedContact {
+  name?: string
+  email?: string
+  phone?: string
+  company?: string
+  title?: string
+  website?: string
+  address?: string
+}
 
 export default function ContactsPage() {
-  const [contacts, setContacts]     = useState<any[]>([])
-  const [name, setName]             = useState('')
-  const [email, setEmail]           = useState('')
-  const [company, setCompany]       = useState('')
-  const [phone, setPhone]           = useState('')
-  const [adding, setAdding]         = useState(false)
-  const [loading, setLoading]       = useState(true)
-  const [scanning, setScanning]     = useState(false)
-  const [scanResult, setScanResult] = useState<any>(null)
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [company, setCompany] = useState('')
+  const [phone, setPhone] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [scanning, setScanning] = useState(false)
+  const [scanResult, setScanResult] = useState<ScannedContact | null>(null)
   const scanFileRef = useRef<HTMLInputElement>(null)
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase
-      .from('contacts')
-      .select('*')
-      .order('created_at', { ascending: false })
-    setContacts(data || [])
-    setLoading(false)
+    try {
+      const data = await apiFetch('/contacts/').then(r => r.json())
+      setContacts(Array.isArray(data) ? data : [])
+    } catch {
+      toast.error('Failed to load contacts')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function addContact() {
     if (!name.trim()) return
-    const { data: { user } } = await supabase.auth.getUser()
-    await supabase.from('contacts').insert({
-      name, email, company, phone, user_id: user!.id
-    })
-    setAdding(false)
-    setName(''); setEmail(''); setCompany('')
-    setPhone(''); setScanResult(null)
-    load()
+    try {
+      await apiFetch('/contacts/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email: email || null, company: company || null, phone: phone || null }),
+      })
+      setAdding(false)
+      setName(''); setEmail(''); setCompany(''); setPhone(''); setScanResult(null)
+      load()
+    } catch {
+      toast.error('Failed to add contact')
+    }
   }
 
   async function deleteContact(id: string, e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
     if (!confirm('Delete this contact?')) return
-    await supabase.from('contacts').delete().eq('id', id)
-    load()
+    try {
+      await apiFetch(`/contacts/${id}`, { method: 'DELETE' })
+      load()
+    } catch {
+      toast.error('Failed to delete contact')
+    }
   }
 
   async function handleScanCard(e: React.ChangeEvent<HTMLInputElement>) {
@@ -52,18 +74,12 @@ export default function ContactsPage() {
     if (!file) return
     setScanning(true)
     setScanResult(null)
-
     const form = new FormData()
     form.append('file', file)
-
     try {
-      const res  = await fetch(`${API}/vision/scan-card`, {
-        method: 'POST',
-        body: form
-      })
+      const res = await apiFetch('/vision/scan-card', { method: 'POST', body: form })
       const data = await res.json()
-      const ext  = data.extracted
-
+      const ext: ScannedContact = data.extracted
       setName(ext.name || '')
       setEmail(ext.email || '')
       setCompany(ext.company || '')
@@ -71,288 +87,133 @@ export default function ContactsPage() {
       setScanResult(ext)
       setAdding(true)
     } catch {
-      alert('Scan failed. Is the backend running on :8000?')
+      toast.error('Scan failed. Is the backend running?')
+    } finally {
+      setScanning(false)
+      if (scanFileRef.current) scanFileRef.current.value = ''
     }
-
-    setScanning(false)
-    if (scanFileRef.current) scanFileRef.current.value = ''
   }
 
   function cancelForm() {
     setAdding(false)
-    setName(''); setEmail('')
-    setCompany(''); setPhone('')
-    setScanResult(null)
+    setName(''); setEmail(''); setCompany(''); setPhone(''); setScanResult(null)
   }
 
   useEffect(() => { load() }, [])
 
   return (
     <div>
-      {/* Header */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between',
-        alignItems: 'center', marginBottom: 24
-      }}>
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 500, marginBottom: 2 }}>Contacts</h1>
-          <p style={{ fontSize: 13, color: '#888' }}>{contacts.length} total</p>
+          <h1 className="text-[22px] font-medium mb-0.5">Contacts</h1>
+          <p className="text-[13px] text-stone-400">{contacts.length} total</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="flex gap-2">
           <input
             ref={scanFileRef}
             type="file"
             accept="image/*"
             onChange={handleScanCard}
-            style={{ display: 'none' }}
+            className="hidden"
           />
-          <button
+          <Button
+            variant="outline"
             onClick={() => scanFileRef.current?.click()}
             disabled={scanning}
-            style={{
-              padding: '8px 16px',
-              background: '#fff',
-              color: '#185fa5',
-              border: '0.5px solid #185fa5',
-              borderRadius: 8,
-              cursor: scanning ? 'not-allowed' : 'pointer',
-              fontSize: 13,
-              opacity: scanning ? 0.7 : 1
-            }}>
+            className="text-[#185fa5] border-[#185fa5] hover:bg-blue-50 h-9 px-4"
+          >
             {scanning ? 'Scanning...' : 'Scan card'}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setAdding(true)}
-            style={{
-              padding: '8px 16px',
-              background: '#000',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontSize: 13
-            }}>
+            className="h-9 px-4 bg-black text-white hover:bg-stone-800"
+          >
             + Add contact
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* Add / Scan form */}
       {adding && (
-        <div style={{
-          background: '#f7f7f5',
-          border: '0.5px solid #e5e5e0',
-          borderRadius: 12,
-          padding: 20,
-          marginBottom: 24,
-          maxWidth: 500
-        }}>
-          <p style={{ fontWeight: 500, fontSize: 14, marginBottom: 14 }}>
+        <div className="bg-stone-50 border border-stone-200 rounded-xl p-5 mb-6 max-w-[500px]">
+          <p className="font-medium text-sm mb-3.5">
             {scanResult ? 'Review scanned contact' : 'New contact'}
           </p>
 
-          {/* Scan result preview */}
           {scanResult && (
-            <div style={{
-              background: '#f0f8f4',
-              border: '0.5px solid #c8e6d8',
-              borderRadius: 8,
-              padding: 10,
-              marginBottom: 14,
-              fontSize: 12
-            }}>
-              <p style={{ color: '#0f6e56', fontWeight: 500, marginBottom: 6 }}>
-                Extracted from business card
-              </p>
-              {scanResult.title && (
-                <p style={{ color: '#555', marginBottom: 2 }}>
-                  Title: {scanResult.title}
-                </p>
-              )}
-              {scanResult.website && (
-                <p style={{ color: '#555', marginBottom: 2 }}>
-                  Website: {scanResult.website}
-                </p>
-              )}
-              {scanResult.address && (
-                <p style={{ color: '#555', marginBottom: 2 }}>
-                  Address: {scanResult.address}
-                </p>
-              )}
-              <p style={{ color: '#888', marginTop: 6, fontSize: 11 }}>
-                Edit fields below if needed before saving
-              </p>
+            <div className="bg-[#f0f8f4] border border-[#c8e6d8] rounded-lg p-2.5 mb-3.5 text-xs">
+              <p className="text-[#0f6e56] font-medium mb-1.5">Extracted from business card</p>
+              {scanResult.title && <p className="text-stone-500 mb-0.5">Title: {scanResult.title}</p>}
+              {scanResult.website && <p className="text-stone-500 mb-0.5">Website: {scanResult.website}</p>}
+              {scanResult.address && <p className="text-stone-500 mb-0.5">Address: {scanResult.address}</p>}
+              <p className="text-stone-400 mt-1.5 text-[11px]">Edit fields below if needed before saving</p>
             </div>
           )}
 
-          {/* Form fields */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 10,
-            marginBottom: 14
-          }}>
-            <input
-              placeholder="Name *"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                border: '0.5px solid #ccc',
-                borderRadius: 8,
-                fontSize: 13,
-                width: '100%',
-                background: '#fff'
-              }}
-            />
-            <input
-              placeholder="Company"
-              value={company}
-              onChange={e => setCompany(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                border: '0.5px solid #ccc',
-                borderRadius: 8,
-                fontSize: 13,
-                width: '100%',
-                background: '#fff'
-              }}
-            />
-            <input
-              placeholder="Email"
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                border: '0.5px solid #ccc',
-                borderRadius: 8,
-                fontSize: 13,
-                width: '100%',
-                background: '#fff'
-              }}
-            />
-            <input
-              placeholder="Phone"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                border: '0.5px solid #ccc',
-                borderRadius: 8,
-                fontSize: 13,
-                width: '100%',
-                background: '#fff'
-              }}
-            />
+          <div className="grid grid-cols-2 gap-2.5 mb-3.5">
+            <Input placeholder="Name *" value={name} onChange={e => setName(e.target.value)} className="h-9" />
+            <Input placeholder="Company" value={company} onChange={e => setCompany(e.target.value)} className="h-9" />
+            <Input placeholder="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} className="h-9" />
+            <Input placeholder="Phone" value={phone} onChange={e => setPhone(e.target.value)} className="h-9" />
           </div>
 
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
+          <div className="flex gap-2">
+            <Button
               onClick={addContact}
               disabled={!name.trim()}
-              style={{
-                padding: '8px 16px',
-                background: name.trim() ? '#000' : '#ccc',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 8,
-                cursor: name.trim() ? 'pointer' : 'not-allowed',
-                fontSize: 13
-              }}>
+              className="h-8 px-4 bg-black text-white hover:bg-stone-800 disabled:opacity-40"
+            >
               Save
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
               onClick={cancelForm}
-              style={{
-                padding: '8px 16px',
-                background: 'transparent',
-                color: '#888',
-                border: '0.5px solid #ccc',
-                borderRadius: 8,
-                cursor: 'pointer',
-                fontSize: 13
-              }}>
+              className="h-8 px-4 text-stone-400 border-stone-300 hover:bg-stone-50"
+            >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
-      {/* Contacts table */}
       {loading ? (
-        <p style={{ color: '#888', fontSize: 13, padding: '24px 0' }}>Loading...</p>
+        <p className="text-stone-400 text-[13px] py-6">Loading...</p>
       ) : contacts.length === 0 ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '48px 0',
-          border: '0.5px dashed #e5e5e0',
-          borderRadius: 12
-        }}>
-          <p style={{ fontSize: 14, color: '#888', marginBottom: 8 }}>
-            No contacts yet
-          </p>
-          <p style={{ fontSize: 13, color: '#bbb' }}>
-            Click "+ Add contact" or "Scan card" to get started
-          </p>
+        <div className="text-center py-12 border border-dashed border-stone-200 rounded-xl">
+          <p className="text-sm text-stone-400 mb-2">No contacts yet</p>
+          <p className="text-[13px] text-stone-300">Click &quot;+ Add contact&quot; or &quot;Scan card&quot; to get started</p>
         </div>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+        <table className="w-full border-collapse text-sm">
           <thead>
-            <tr style={{ borderBottom: '0.5px solid #e5e5e0' }}>
+            <tr className="border-b border-stone-200">
               {['Name', 'Company', 'Email', 'Phone', 'Created', ''].map(h => (
-                <th key={h} style={{
-                  textAlign: 'left',
-                  padding: '8px 12px',
-                  color: '#888',
-                  fontWeight: 500,
-                  fontSize: 12
-                }}>{h}</th>
+                <th key={h} className="text-left px-3 py-2 text-stone-400 font-medium text-xs">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {contacts.map(c => (
-              <tr key={c.id} style={{
-                borderBottom: '0.5px solid #f0f0ee',
-                transition: 'background .1s'
-              }}>
-                <td style={{ padding: '12px 12px' }}>
+              <tr key={c.id} className="border-b border-stone-100 hover:bg-stone-50 transition-colors">
+                <td className="px-3 py-3">
                   <Link
                     href={`/dashboard/contacts/${c.id}`}
-                    style={{
-                      color: '#185fa5',
-                      textDecoration: 'none',
-                      fontWeight: 500
-                    }}>
+                    className="text-[#185fa5] no-underline font-medium hover:underline"
+                  >
                     {c.name}
                   </Link>
                 </td>
-                <td style={{ padding: '12px 12px', color: '#666' }}>
-                  {c.company || '—'}
-                </td>
-                <td style={{ padding: '12px 12px', color: '#666' }}>
-                  {c.email || '—'}
-                </td>
-                <td style={{ padding: '12px 12px', color: '#666' }}>
-                  {c.phone || '—'}
-                </td>
-                <td style={{ padding: '12px 12px', color: '#aaa', fontSize: 12 }}>
+                <td className="px-3 py-3 text-stone-500">{c.company || '—'}</td>
+                <td className="px-3 py-3 text-stone-500">{c.email || '—'}</td>
+                <td className="px-3 py-3 text-stone-500">{c.phone || '—'}</td>
+                <td className="px-3 py-3 text-stone-400 text-xs">
                   {new Date(c.created_at).toLocaleDateString()}
                 </td>
-                <td style={{ padding: '12px 12px' }}>
+                <td className="px-3 py-3">
                   <button
                     onClick={e => deleteContact(c.id, e)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#ddd',
-                      cursor: 'pointer',
-                      fontSize: 18,
-                      padding: '0 4px',
-                      lineHeight: 1,
-                      borderRadius: 4
-                    }}>
+                    aria-label={`Delete ${c.name}`}
+                    className="text-stone-300 hover:text-red-400 text-lg leading-none transition-colors"
+                  >
                     ×
                   </button>
                 </td>

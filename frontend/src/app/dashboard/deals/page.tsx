@@ -1,6 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/api'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { toast } from 'sonner'
+import type { Deal, Contact } from '@/types'
 
 const STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won']
 
@@ -13,8 +18,8 @@ const STAGE_COLORS: Record<string, string> = {
 }
 
 export default function DealsPage() {
-  const [deals, setDeals] = useState<any[]>([])
-  const [contacts, setContacts] = useState<any[]>([])
+  const [deals, setDeals] = useState<Deal[]>([])
+  const [contacts, setContacts] = useState<Pick<Contact, 'id' | 'name'>[]>([])
   const [adding, setAdding] = useState(false)
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState('')
@@ -25,274 +30,224 @@ export default function DealsPage() {
 
   async function load() {
     setLoading(true)
-    const [{ data: d }, { data: c }] = await Promise.all([
-      supabase.from('deals').select('*').order('created_at', { ascending: false }),
-      supabase.from('contacts').select('id, name').order('name')
-    ])
-    setDeals(d || [])
-    setContacts(c || [])
-    setLoading(false)
+    try {
+      const [dealsData, contactsData] = await Promise.all([
+        apiFetch('/deals/').then(r => r.json()),
+        apiFetch('/contacts/').then(r => r.json()),
+      ])
+      setDeals(Array.isArray(dealsData) ? dealsData : [])
+      setContacts(Array.isArray(contactsData) ? contactsData : [])
+    } catch {
+      toast.error('Failed to load data')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function addDeal() {
     if (!title.trim()) return
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        alert('Not logged in. Please refresh the page.')
-        return
-      }
-      await supabase.from('deals').insert({
-        title,
-        value: parseFloat(value) || 0,
-        stage,
-        contact_id: contactId || null,
-        user_id: user.id,
-        last_touch: new Date().toISOString()
+      await apiFetch('/deals/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          value: parseFloat(value) || 0,
+          stage,
+          contact_id: contactId || null,
+        }),
       })
       setAdding(false)
       setTitle(''); setValue(''); setStage('lead'); setContactId('')
       load()
-    } catch (err) {
-      console.error('Error adding deal:', err)
-      alert('Failed to add deal. Check console.')
+    } catch {
+      toast.error('Failed to add deal')
     }
   }
+
   async function moveDeal(dealId: string, newStage: string) {
     setMovingDeal(dealId)
-    await supabase.from('deals')
-      .update({ stage: newStage, last_touch: new Date().toISOString() })
-      .eq('id', dealId)
-    await load()
-    setMovingDeal(null)
+    try {
+      await apiFetch(`/deals/${dealId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: newStage, last_touch: new Date().toISOString() }),
+      })
+      await load()
+    } catch {
+      toast.error('Failed to move deal')
+    } finally {
+      setMovingDeal(null)
+    }
   }
 
   async function deleteDeal(dealId: string, e: React.MouseEvent) {
     e.stopPropagation()
     if (!confirm('Delete this deal?')) return
-    await supabase.from('deals').delete().eq('id', dealId)
-    load()
+    try {
+      await apiFetch(`/deals/${dealId}`, { method: 'DELETE' })
+      load()
+    } catch {
+      toast.error('Failed to delete deal')
+    }
   }
 
-  function getContactName(contactId: string) {
-    return contacts.find(c => c.id === contactId)?.name || null
-  }
-
-  function totalValue() {
-    return deals
-      .filter(d => d.stage === 'won')
-      .reduce((sum, d) => sum + (d.value || 0), 0)
+  function totalWonValue() {
+    return deals.filter(d => d.stage === 'won').reduce((sum, d) => sum + (d.value || 0), 0)
   }
 
   useEffect(() => { load() }, [])
 
   return (
     <div>
-      {/* Header */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between',
-        alignItems: 'center', marginBottom: 8
-      }}>
+      <div className="flex justify-between items-center mb-2">
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 500, marginBottom: 2 }}>Deal pipeline</h1>
-          <p style={{ fontSize: 13, color: '#888' }}>
-            {deals.length} deals · Won: ${totalValue().toLocaleString()}
+          <h1 className="text-[22px] font-medium mb-0.5">Deal pipeline</h1>
+          <p className="text-[13px] text-stone-400">
+            {deals.length} deals · Won: ${totalWonValue().toLocaleString()}
           </p>
         </div>
-        <button
+        <Button
           onClick={() => setAdding(true)}
-          style={{
-            padding: '8px 16px', background: '#000', color: '#fff',
-            border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13
-          }}>
+          className="h-9 px-4 bg-black text-white hover:bg-stone-800"
+        >
           + Add deal
-        </button>
+        </Button>
       </div>
 
-      {/* Add deal form */}
       {adding && (
-        <div style={{
-          background: '#f7f7f5', border: '0.5px solid #e5e5e0',
-          borderRadius: 12, padding: 20, marginBottom: 20, maxWidth: 480
-        }}>
-          <p style={{ fontWeight: 500, fontSize: 14, marginBottom: 14 }}>New deal</p>
-          <input
+        <div className="bg-stone-50 border border-stone-200 rounded-xl p-5 mb-5 max-w-[480px]">
+          <p className="font-medium text-sm mb-3.5">New deal</p>
+          <Input
             placeholder="Deal title *"
             value={title}
             onChange={e => setTitle(e.target.value)}
-            style={{
-              width: '100%', padding: '8px 12px', border: '0.5px solid #ccc',
-              borderRadius: 8, fontSize: 13, marginBottom: 10
-            }}
+            className="mb-2.5 h-9"
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-            <input
+          <div className="grid grid-cols-2 gap-2.5 mb-2.5">
+            <Input
               placeholder="Value ($)"
               type="number"
               value={value}
               onChange={e => setValue(e.target.value)}
-              style={{
-                padding: '8px 12px', border: '0.5px solid #ccc',
-                borderRadius: 8, fontSize: 13, width: '100%'
-              }}
+              className="h-9"
             />
             <select
               value={stage}
               onChange={e => setStage(e.target.value)}
-              style={{
-                padding: '8px 12px', border: '0.5px solid #ccc',
-                borderRadius: 8, fontSize: 13, width: '100%',
-                background: '#fff'
-              }}>
+              className="h-9 px-3 border border-stone-200 rounded-lg text-[13px] bg-white"
+            >
               {STAGES.map(s => (
-                <option key={s} value={s}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </option>
+                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
               ))}
             </select>
           </div>
           <select
             value={contactId}
             onChange={e => setContactId(e.target.value)}
-            style={{
-              width: '100%', padding: '8px 12px', border: '0.5px solid #ccc',
-              borderRadius: 8, fontSize: 13, marginBottom: 14, background: '#fff'
-            }}>
+            className="w-full h-9 px-3 border border-stone-200 rounded-lg text-[13px] bg-white mb-3.5"
+          >
             <option value="">— Link to contact (optional) —</option>
             {contacts.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
+          <div className="flex gap-2">
+            <Button
               onClick={addDeal}
               disabled={!title.trim()}
-              style={{
-                padding: '8px 16px', background: '#000', color: '#fff',
-                border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13
-              }}>
+              className="h-8 px-4 bg-black text-white hover:bg-stone-800"
+            >
               Save
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => { setAdding(false); setTitle(''); setValue('') }}
-              style={{
-                padding: '8px 16px', background: 'transparent', color: '#888',
-                border: '0.5px solid #ccc', borderRadius: 8, cursor: 'pointer', fontSize: 13
-              }}>
+              className="h-8 px-4 text-stone-400 border-stone-300"
+            >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
-      {/* Kanban board */}
       {loading ? (
-        <p style={{ color: '#888', fontSize: 13, marginTop: 24 }}>Loading...</p>
+        <p className="text-stone-400 text-[13px] mt-6">Loading...</p>
       ) : (
-        <div style={{
-          display: 'flex', gap: 12,
-          overflowX: 'auto', paddingBottom: 16, marginTop: 20
-        }}>
+        <div className="flex gap-3 overflow-x-auto pb-4 mt-5">
           {STAGES.map(s => {
             const stageDeals = deals.filter(d => d.stage === s)
             const stageValue = stageDeals.reduce((sum, d) => sum + (d.value || 0), 0)
 
             return (
-              <div key={s} style={{ minWidth: 210, flex: '0 0 210px' }}>
-                {/* Column header */}
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between',
-                  alignItems: 'center', marginBottom: 10, padding: '0 2px'
-                }}>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 6
-                  }}>
-                    <div style={{
-                      width: 8, height: 8, borderRadius: '50%',
-                      background: STAGE_COLORS[s]
-                    }} />
-                    <span style={{
-                      fontSize: 12, fontWeight: 500, textTransform: 'capitalize',
-                      color: '#444'
-                    }}>{s}</span>
-                    <span style={{
-                      fontSize: 11, color: '#aaa',
-                      background: '#f0f0ee', borderRadius: 10,
-                      padding: '1px 6px'
-                    }}>{stageDeals.length}</span>
+              <div key={s} className="min-w-[210px] w-[210px] shrink-0">
+                <div className="flex justify-between items-center mb-2.5 px-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full" style={{ background: STAGE_COLORS[s] }} />
+                    <span className="text-xs font-medium capitalize text-stone-600">{s}</span>
+                    <span className="text-[11px] text-stone-400 bg-stone-100 rounded-full px-1.5 py-px">
+                      {stageDeals.length}
+                    </span>
                   </div>
                   {stageValue > 0 && (
-                    <span style={{ fontSize: 11, color: '#888' }}>
-                      ${stageValue.toLocaleString()}
-                    </span>
+                    <span className="text-[11px] text-stone-400">${stageValue.toLocaleString()}</span>
                   )}
                 </div>
 
-                {/* Deal cards */}
                 {stageDeals.map(deal => (
-                  <div key={deal.id} style={{
-                    background: '#fff',
-                    border: '0.5px solid #e5e5e0',
-                    borderRadius: 8, padding: 12, marginBottom: 8,
-                    opacity: movingDeal === deal.id ? 0.5 : 1,
-                    transition: 'opacity .15s'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <p style={{ fontWeight: 500, fontSize: 13, marginBottom: 4, flex: 1 }}>
-                        {deal.title}
-                      </p>
+                  <div
+                    key={deal.id}
+                    className={cn(
+                      'bg-white border border-stone-200 rounded-lg p-3 mb-2 transition-opacity',
+                      movingDeal === deal.id ? 'opacity-50' : 'opacity-100'
+                    )}
+                  >
+                    <div className="flex justify-between items-start">
+                      <p className="font-medium text-[13px] mb-1 flex-1">{deal.title}</p>
                       <button
                         onClick={e => deleteDeal(deal.id, e)}
-                        style={{
-                          background: 'none', border: 'none',
-                          color: '#ddd', cursor: 'pointer',
-                          fontSize: 16, padding: '0 0 0 6px', lineHeight: 1
-                        }}>×</button>
+                        aria-label={`Delete ${deal.title}`}
+                        className="text-stone-300 hover:text-red-400 text-base leading-none ml-1.5 transition-colors"
+                      >
+                        ×
+                      </button>
                     </div>
 
                     {deal.value > 0 && (
-                      <p style={{ fontSize: 12, color: '#0f6e56', marginBottom: 4, fontWeight: 500 }}>
+                      <p className="text-xs text-[#0f6e56] mb-1 font-medium">
                         ${Number(deal.value).toLocaleString()}
                       </p>
                     )}
 
-                    {deal.contact_id && (
-                      <p style={{ fontSize: 11, color: '#888', marginBottom: 8 }}>
-                        {getContactName(deal.contact_id)}
-                      </p>
+                    {deal.contacts?.name && (
+                      <p className="text-[11px] text-stone-400 mb-2">{deal.contacts.name}</p>
                     )}
 
-                    {/* Move buttons */}
-                    <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+                    <div className="flex gap-1 mt-2">
                       {STAGES.indexOf(s) > 0 && (
                         <button
                           onClick={() => moveDeal(deal.id, STAGES[STAGES.indexOf(s) - 1])}
-                          style={{
-                            flex: 1, padding: '4px 0', fontSize: 11,
-                            background: '#f7f7f5', border: '0.5px solid #e5e5e0',
-                            borderRadius: 6, cursor: 'pointer', color: '#888'
-                          }}>← Back</button>
+                          className="flex-1 py-1 text-[11px] bg-stone-50 border border-stone-200 rounded-md text-stone-400 hover:bg-stone-100 transition-colors"
+                        >
+                          ← Back
+                        </button>
                       )}
                       {STAGES.indexOf(s) < STAGES.length - 1 && (
                         <button
                           onClick={() => moveDeal(deal.id, STAGES[STAGES.indexOf(s) + 1])}
-                          style={{
-                            flex: 1, padding: '4px 0', fontSize: 11,
-                            background: '#f0f8f4', border: '0.5px solid #c8e6d8',
-                            borderRadius: 6, cursor: 'pointer', color: '#0f6e56'
-                          }}>Advance →</button>
+                          className="flex-1 py-1 text-[11px] bg-[#f0f8f4] border border-[#c8e6d8] rounded-md text-[#0f6e56] hover:bg-[#e0f4eb] transition-colors"
+                        >
+                          Advance →
+                        </button>
                       )}
                     </div>
                   </div>
                 ))}
 
-                {/* Empty column */}
                 {stageDeals.length === 0 && (
-                  <div style={{
-                    border: '0.5px dashed #e5e5e0', borderRadius: 8,
-                    padding: '20px 12px', textAlign: 'center',
-                    fontSize: 12, color: '#ccc'
-                  }}>Empty</div>
+                  <div className="border border-dashed border-stone-200 rounded-lg py-5 text-center text-xs text-stone-300">
+                    Empty
+                  </div>
                 )}
               </div>
             )
